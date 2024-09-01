@@ -26,6 +26,7 @@ public class BinarySearchtree {
     }
 
     public void insert(int x) {
+        if (this.contains(x)) return;
         this.root = this.insertR(x, this.root);
         this.size++;
     }
@@ -40,6 +41,7 @@ public class BinarySearchtree {
     }
 
     public void remove(int x) {
+        if (!this.contains(x)) return;
         this.root = removeR(x, this.root);
         this.size--;
     }
