@@ -1,0 +1,33 @@
+
+Teque
+
+a)
+L er en liste
+
+push_back(x):
+	L.addLast(x)
+push_front(x):
+	L.addFirst(x)
+push_middle(x):
+	middle <- (L.size+1)/2
+	L.add(middle, x)
+get(x):
+	print(L.get(x))
+
+b)
+run med f.eks kommandoen java Main inputs/eksempel_input (tar inn fil som argument i terminal)
+
+c)
+push_back og push_front vil alltid være O(1)
+push_middle vil i pseudokoden ha O(N), men fordi jeg har en midtpeker i java koden vil den der være O(1)
+get vil være O(N)
+
+d)
+Hvis vi begrenser N til å være en konstant vil vi ikke kunne se hvordan N utvikler seg, fordi N er konstant,
+og da vil vi alltid kunne forenkle til O(1). Hvis N = 10^6 så kan O(10^6) forenkles til O(1)
+
+
+Binærsøk
+jeg går ut ifra at get() funksjonen i den lenka lista bruker O(N) kompleksitet, så da vil
+binærsøket også bruke O(N) kompleksitet. Fordi vi bruker en linked list som må gå gjennom alle noder i get(),
+vil dette ta mer tid enn man er vandt til med binærsøk som vanligvis er O(log(N)) med en mer effektiv datastruktur. 
