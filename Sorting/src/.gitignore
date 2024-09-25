@@ -1,0 +1,4 @@
+*.class
+*.out
+*.csv
+__pycache__
