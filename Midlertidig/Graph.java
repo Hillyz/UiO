@@ -71,6 +71,7 @@ public class Graph {
         this.buildGraph();
         this.printNodes();
         this.printEdges();
+        this.sixDeegreesIMDB("nm0637259", "nm0931324");
     }
 
     public void buildGraph() throws FileNotFoundException {
@@ -128,7 +129,70 @@ public class Graph {
     }
 
     public void sixDeegreesIMDB(String id1, String id2) {
+        Actor start = this.actors.get(id1);
+        Actor goal = this.actors.get(id2);
 
+        List<Actor> visited = new ArrayList<>();
+        List<Map<Actor, String>> path = BFSvisit(start, goal, visited);
+        System.out.println("Start: " + start);
+        System.out.println("Goal: " + goal);
+
+        for (Map<Actor, String> p : path) {
+            p.forEach((actor, movie) -> {
+                System.out.print(actor + "-->" + this.movies.get(movie) + "-->");
+            });
+        }
     }
 
+    private List<Map<Actor, String>> BFSvisit(Actor start, Actor finish, List<Actor> visited) {
+        visited.add(start);
+        Queue<Actor> queue = new LinkedList<>();
+        queue.add(start);
+        Map<Actor, Actor> parents = new HashMap<>();
+        Map<Actor, String> edges = new HashMap<>();
+
+        while (!queue.isEmpty()) {
+            Actor u = queue.poll();
+            for (Map<Actor, String> m : this.graph.get(u)) {
+                for (Actor v : m.keySet()) {
+                    if (v.equals(finish)) {
+                        Map<Actor, String> map = new HashMap<>();
+                        map.put(u, m.get(v));
+                        parents.put(v, u);
+                        List<Actor> result1 = new ArrayList<>();
+                        List<String> result2 = new ArrayList<>();
+                        Actor pointer = v;
+                        while (pointer != null) {
+                            result1.add(pointer);
+                            result2.add(edges.get(pointer));
+                            pointer = parents.get(pointer);
+                        }
+                        System.out.println(result1);
+                        System.out.println(result2);
+                        List<Map<Actor, String>> result = new ArrayList<>();
+                        for (int i = 0; i < Math.max(result1.size(), result2.size()); i++) {
+                            Map<Actor, String> moradi = new HashMap<>();
+                            String mv;
+                            try {
+                                mv = result2.get(i);
+                            } catch (IndexOutOfBoundsException e) {
+                                mv = null;
+                            }
+                            moradi.put(result1.get(i), result2.get(i));
+                            result.add(moradi);
+                        }
+                        return result.reversed();
+                    }
+
+                    if (!visited.contains(v)) {
+                        visited.add(v);
+                        edges.put(v, m.get(v));
+                        parents.put(v, u);
+                        queue.offer(v);
+                    }
+                }
+            }
+        }
+        return null;
+    }
 }
