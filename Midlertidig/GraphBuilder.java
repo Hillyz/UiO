@@ -3,9 +3,9 @@ import java.util.*;
 
 public class GraphBuilder {
 
-    private HashMap<Actor, List<Actor>> naboListe = new HashMap<>();
-    private HashMap<String, Movie> movies = new HashMap<>();
-    private HashSet<Actor> actors = new HashSet<>();
+    private final Map<Actor, List<Map<Actor, String>>> graph = new HashMap<>();
+    private final Map<String, Movie> movies = new HashMap<>();
+    private final Set<Actor> actors = new HashSet<>();
 
     public static void main(String[] args) throws Exception {
         GraphBuilder gb = new GraphBuilder();
@@ -17,6 +17,7 @@ public class GraphBuilder {
         this.printNodes();
         this.printEdges();
     }
+    
     public void initObjects() throws Exception{
         Scanner actorScanner = new Scanner(new File("actors.tsv"));
         Scanner movieScanner = new Scanner(new File("movies.tsv"));
@@ -39,7 +40,7 @@ public class GraphBuilder {
     }
 
     public void buildGraph() {
-        HashMap<String, ArrayList<Actor>> hm = new HashMap<>();
+        HashMap<String, ArrayList<Actor>> hm = new HashMap<>(); //alle filmer med alle skuespillerne i filmen
         for (Actor a : actors) {
             for (String m : a.movies) {
                 if (!hm.containsKey(m)) {
@@ -52,34 +53,42 @@ public class GraphBuilder {
             }
         }
 
-        for (String m : hm.keySet()) {
-            for (Actor a : hm.get(m)) {
-                if (!movies.containsKey(m)) {
-                    this.naboListe.put(a, new ArrayList<>());
-                } else {
-                    List<Actor> lst = hm.get(m).subList(0, hm.get(m).size());
-                    this.naboListe.put(a, lst);
-                    System.out.println(this.naboListe.get(a).add(new Actor("test", "test", new ArrayList<>())));
+        for (String movie : hm.keySet()) {
+            for (Actor node : hm.get(movie)) {
+                List<Map<Actor, String>> edges = new ArrayList<>(); //liste med relasjon til andre actors, med film
+                // sjekk om film er relevant
+                if (!movies.containsKey(movie)) {
+                    if (!this.graph.containsKey(node)) {
+                        this.graph.put(node, new ArrayList<>());
+                    }
+                    continue;
                 }
-            }
-        }
-        for (Actor a : this.naboListe.keySet()) {
+                List<Actor> copy = new ArrayList<>(hm.get(movie)); // alle actors fra filmen i en liste
+                copy.remove(node); // fjern seg selv for å unngå self loops
 
+                for (Actor ax : copy) {
+                    Map<Actor, String> connection = new HashMap<>();
+                    connection.put(ax, movie);
+                    edges.add(connection);
+                }
+                if (this.graph.containsKey(node)) {
+                    this.graph.get(node).addAll(edges);
+                } else
+                    this.graph.put(node, edges);
+            }
         }
     }
 
     public void printNodes() {
-        System.out.println("Nodes: " + this.naboListe.keySet().size());
+        System.out.println("Nodes: " + this.graph.size());
     }
 
     public void printEdges() {
-        int edges = 0;
-        for (List<Actor> l : this.naboListe.values()) {
-            for (Actor a : l) {
-                edges++;
-            }
+        int degrees = 0;
+        for (List<Map<Actor, String>> edges : this.graph.values()) {
+            degrees += edges.size();
         }
-        System.out.println("Edges: " + edges/2);
+        System.out.println("Edges: " + degrees/2);
     }
 
     public static class Actor {
@@ -110,11 +119,7 @@ public class GraphBuilder {
 
         @Override
         public String toString() {
-            return "Movie{" +
-                    "id='" + id + '\'' +
-                    ", name='" + name + '\'' +
-                    ", rating=" + rating +
-                    '}';
+            return this.name + " (" + this.rating + ")";
         }
     }
 }
