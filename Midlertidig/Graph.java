@@ -1,5 +1,4 @@
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.*;
 import java.util.*;
 
 public class Graph {
@@ -14,17 +13,27 @@ public class Graph {
         vei.put("nm0637259", "nm0931324");
         long starttime = System.currentTimeMillis();
         gb.buildGraph();
+        System.out.println("Graphbuild time: " + (System.currentTimeMillis() - starttime) + " ms");
+        long split1 = System.currentTimeMillis();
         vei.forEach((a1, a2) -> {
             gb.sixDeegreesIMDB(a1, a2);
         });
+        System.out.println("Shortest path time: " + (System.currentTimeMillis() - starttime) + " ms");
+        System.out.println("Split 1: " + (System.currentTimeMillis() - split1) + " ms");
+        long split2 = System.currentTimeMillis();
         vei.forEach((a1, a2) -> {
             gb.chillesteVei(a1, a2);
         });
+        System.out.println("Chillest path time: " + (System.currentTimeMillis() - starttime) + " ms");
+        System.out.println("Split 2: " + (System.currentTimeMillis() - split2) + " ms");
+        long split3 = System.currentTimeMillis();
         gb.countComponents();
+        System.out.println("Counting components time: " + (System.currentTimeMillis() - starttime) + " ms");
+        System.out.println("Split 3: " + (System.currentTimeMillis() - split3) + " ms");
         System.out.println("\n" + (System.currentTimeMillis() - starttime) + " ms");
     }
 
-    private final Map<Actor, List<Map<Actor, String>>> graph = new HashMap<>();
+    private final Map<Actor, Set<Edge>> graph = new HashMap<>();
     private final Map<String, Movie> movies = new HashMap<>();
     private final Map<String, Actor> actors = new HashMap<>();
     private final Map<Integer, Integer> components = new HashMap<>();
@@ -63,13 +72,23 @@ public class Graph {
         }
     }
 
+    public static class Edge {
+        private final Actor actor;
+        private final Movie movie;
+
+        public Edge(Actor actor, Movie movie) {
+            this.actor = actor;
+            this.movie = movie;
+        }
+    }
+
     public static class WeightedNode implements Comparable<WeightedNode> {
 
         public final Actor actor;
         public double weight;
-        public String movie;
+        public Movie movie;
 
-        public WeightedNode(Actor actor, double weight, String movie) {
+        public WeightedNode(Actor actor, double weight, Movie movie) {
             this.actor = actor;
             this.weight = weight;
             this.movie = movie;
@@ -86,17 +105,19 @@ public class Graph {
         }
     }
 
-    public void readFile(String file) throws FileNotFoundException {
-        Scanner scanner = new Scanner(new File(file));
+    public void readFile(String file) throws IOException {
+        BufferedReader reader = new BufferedReader(new FileReader(file));
         if (file.contains("movies")) {
-            while (scanner.hasNextLine()) {
-                String[] info = scanner.nextLine().split("\t");
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] info = line.split("\t");
                 Movie m = new Movie(info[0], info[1], Double.parseDouble(info[2]));
                 movies.put(info[0], m);
             }
         } else if (file.contains("actors")) {
-            while (scanner.hasNextLine()) {
-                String[] info = scanner.nextLine().split("\t");
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] info = line.split("\t");
                 List<String> filmer = new ArrayList<>();
                 for (int i = 2; i < info.length; i++) {
                     filmer.add(info[i]);
@@ -107,7 +128,7 @@ public class Graph {
         }
     }
 
-    public void buildGraph() throws FileNotFoundException {
+    public void buildGraph() throws IOException {
         this.readFile("movies.tsv");
         this.readFile("actors.tsv");
         HashMap<String, ArrayList<Actor>> hm = new HashMap<>(); //alle filmer med alle skuespillerne i filmen
@@ -125,21 +146,19 @@ public class Graph {
 
         for (String movie : hm.keySet()) {
             for (Actor node : hm.get(movie)) {
-                List<Map<Actor, String>> edges = new ArrayList<>(); //liste med relasjon til andre actors, med film
+                Set<Edge> edges = new HashSet<>();
                 // sjekk om film er relevant
                 if (!movies.containsKey(movie)) {
                     if (!this.graph.containsKey(node)) {
-                        this.graph.put(node, new ArrayList<>());
+                        this.graph.put(node, edges);
                     }
                     continue;
                 }
-                List<Actor> copy = new ArrayList<>(hm.get(movie)); // alle actors fra filmen i en liste
+                Set<Actor> copy = new HashSet<>(hm.get(movie)); // alle actors fra filmen i en liste
                 copy.remove(node); // fjern seg selv for å unngå self loops
 
                 for (Actor ax : copy) {
-                    Map<Actor, String> connection = new HashMap<>();
-                    connection.put(ax, movie);
-                    edges.add(connection);
+                    edges.add(new Edge(ax, movies.get(movie)));
                 }
                 if (this.graph.containsKey(node)) {
                     this.graph.get(node).addAll(edges);
@@ -157,7 +176,7 @@ public class Graph {
 
     public void printEdges() {
         int degrees = 0;
-        for (List<Map<Actor, String>> edges : this.graph.values()) {
+        for (Set<Edge> edges : this.graph.values()) {
             degrees += edges.size();
         }
         System.out.println("Edges: " + degrees / 2);
@@ -171,19 +190,17 @@ public class Graph {
         System.out.println("\n Fastest from " + start + " to " + goal);
 
         System.out.println(start);
-        for (int i = path.size()-1; i >= 0; i--) {
+        for (int i = path.size() - 1; i >= 0; i--) {
             Actor node1 = path.get(i);
             if (i - 1 < 0) break;
             Actor node2 = path.get(i - 1);
-            String edge = "";
-            for (Map<Actor, String> e : this.graph.get(node1)) {
-                for (Actor a : e.keySet()) {
-                    if (a.equals(node2)) {
-                        edge = e.get(a);
-                    }
+            Movie edge = null;
+            for (Edge e : this.graph.get(node1)) {
+                if (e.actor.equals(node2)) {
+                    edge = e.movie;
                 }
             }
-            System.out.println(" ===[ " + this.movies.get(edge) + " ] ===> " + node2);
+            System.out.println(" ===[ " + edge + " ] ===> " + node2);
         }
     }
 
@@ -196,25 +213,24 @@ public class Graph {
         while (!queue.isEmpty()) {
             Actor u = queue.poll();
             //gå gjennom kanter
-            for (Map<Actor, String> m : this.graph.get(u)) {
-                for (Actor v : m.keySet()) {
-                    if (v.equals(finish)) {
-                        parents.put(v, u);
-                        List<Actor> path = new ArrayList<>();
+            for (Edge e : this.graph.get(u)) {
+                Actor v = e.actor;
+                if (v.equals(finish)) {
+                    parents.put(v, u);
+                    List<Actor> path = new ArrayList<>();
 
-                        Actor pointer = v;
-                        while (pointer != null) {
-                            path.add(pointer);
-                            pointer = parents.get(pointer);
-                        }
-                        return path;
+                    Actor pointer = v;
+                    while (pointer != null) {
+                        path.add(pointer);
+                        pointer = parents.get(pointer);
                     }
+                    return path;
+                }
 
-                    if (!visited.contains(v)) {
-                        visited.add(v);
-                        parents.put(v, u);
-                        queue.offer(v);
-                    }
+                if (!visited.contains(v)) {
+                    visited.add(v);
+                    parents.put(v, u);
+                    queue.offer(v);
                 }
             }
         }
@@ -228,10 +244,10 @@ public class Graph {
         System.out.println("\nMost enjoyable from " + start + " to " + goal);
         List<WeightedNode> weights = this.dijkstras(start, goal);
         System.out.println(start);
-        for (int i = weights.size()-1; i >= 1; i--) {
-            WeightedNode node = weights.get(i-1);
-            String edge = node.movie;
-            System.out.println(" ===[ " + this.movies.get(edge) + " ] ===> " + node.actor);
+        for (int i = weights.size() - 1; i >= 1; i--) {
+            WeightedNode node = weights.get(i - 1);
+            Movie edge = node.movie;
+            System.out.println(" ===[ " + edge + " ] ===> " + node.actor);
         }
         System.out.println(weights.get(0));
     }
@@ -248,22 +264,20 @@ public class Graph {
         while (!queue.isEmpty()) {
             WeightedNode u = queue.poll();
 
-            for (Map<Actor, String> m : this.graph.get(u.actor)) {
-                for (Actor a : m.keySet()) {
-                    double c = dist.get(u.actor).weight + (10 - movies.get(m.get(a)).rating);
-                    WeightedNode v = new WeightedNode(a, c, m.get(a));
+            for (Edge e : this.graph.get(u.actor)) {
+                Actor a = e.actor;
+                double c = dist.get(u.actor).weight + (10 - e.movie.rating);
+                WeightedNode v = new WeightedNode(a, c, e.movie);
 
-                    if (dist.get(a) == null || c < dist.get(a).weight) {
-                        dist.put(a, v);
-                        queue.offer(v);
-                        parents.put(v, u);
-
-                    }
-                    if (a.equals(finish) && v.weight < goal.weight) {
-                        goal.weight = v.weight;
-                        goal.movie = v.movie;
-                        parents.put(goal, u);
-                    }
+                if (dist.get(a) == null || c < dist.get(a).weight) {
+                    dist.put(a, v);
+                    queue.offer(v);
+                    parents.put(v, u);
+                }
+                if (a.equals(finish) && v.weight < goal.weight) {
+                    goal.weight = v.weight;
+                    goal.movie = v.movie;
+                    parents.put(goal, u);
                 }
             }
         }
@@ -299,13 +313,12 @@ public class Graph {
         int i = 1;
         while (!queue.isEmpty()) {
             Actor u = queue.poll();
-            for (Map<Actor, String> m : this.graph.get(u)) {
-                for (Actor v : m.keySet()) {
-                    if (!visited.contains(v)) {
-                        visited.add(v);
-                        i++;
-                        queue.offer(v);
-                    }
+            for (Edge edge : this.graph.get(u)) {
+                Actor v = edge.actor;
+                if (!visited.contains(v)) {
+                    visited.add(v);
+                    i++;
+                    queue.offer(v);
                 }
             }
         }
