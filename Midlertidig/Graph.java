@@ -6,7 +6,9 @@ public class Graph {
 
     public static void main(String[] args) throws Exception {
         Graph gb = new Graph();
-        gb.start();
+        gb.buildGraph();
+        gb.sixDeegreesIMDB("nm0424060", "nm8076281");
+        gb.chillesteVei("nm0424060", "nm8076281");
     }
 
     private final Map<Actor, List<Map<Actor, String>>> graph = new HashMap<>();
@@ -34,6 +36,7 @@ public class Graph {
         public final String id;
         public final String name;
         public final double rating;
+
         public Movie(String movieId, String movieName, double movieRating) {
             this.id = movieId;
             this.name = movieName;
@@ -46,6 +49,29 @@ public class Graph {
         }
     }
 
+    public static class WeightedNode implements Comparable<WeightedNode> {
+
+        public final Actor actor;
+        public double weight;
+        public String movie;
+
+        public WeightedNode(Actor actor, double weight, String movie) {
+            this.actor = actor;
+            this.weight = weight;
+            this.movie = movie;
+        }
+
+        @Override
+        public String toString() {
+            return "Total weight: " + this.weight;
+        }
+
+        @Override
+        public int compareTo(WeightedNode o) {
+            return (int) (this.weight - o.weight);
+        }
+    }
+
     public void readFile(String file) throws FileNotFoundException {
         Scanner scanner = new Scanner(new File(file));
         if (file.contains("movies")) {
@@ -54,7 +80,7 @@ public class Graph {
                 Movie m = new Movie(info[0], info[1], Double.parseDouble(info[2]));
                 movies.put(info[0], m);
             }
-        } else if(file.contains("actors")) {
+        } else if (file.contains("actors")) {
             while (scanner.hasNextLine()) {
                 String[] info = scanner.nextLine().split("\t");
                 List<String> filmer = new ArrayList<>();
@@ -65,13 +91,6 @@ public class Graph {
                 actors.put(info[0], a);
             }
         }
-    }
-
-    public void start() throws FileNotFoundException{
-        this.buildGraph();
-        this.printNodes();
-        this.printEdges();
-        this.sixDeegreesIMDB("nm0637259", "nm0931324");
     }
 
     public void buildGraph() throws FileNotFoundException {
@@ -114,6 +133,8 @@ public class Graph {
                     this.graph.put(node, edges);
             }
         }
+        this.printNodes();
+        this.printEdges();
     }
 
     public void printNodes() {
@@ -125,68 +146,58 @@ public class Graph {
         for (List<Map<Actor, String>> edges : this.graph.values()) {
             degrees += edges.size();
         }
-        System.out.println("Edges: " + degrees/2);
+        System.out.println("Edges: " + degrees / 2);
     }
 
     public void sixDeegreesIMDB(String id1, String id2) {
         Actor start = this.actors.get(id1);
         Actor goal = this.actors.get(id2);
 
-        List<Actor> visited = new ArrayList<>();
-        List<Map<Actor, String>> path = BFSvisit(start, goal, visited);
-        System.out.println("Start: " + start);
-        System.out.println("Goal: " + goal);
+        List<Actor> path = BFSvisit(start, goal, new HashSet<>());
+        System.out.println("\n Fastest from " + start + " to " + goal);
 
-        for (Map<Actor, String> p : path) {
-            p.forEach((actor, movie) -> {
-                System.out.print(actor + "-->" + this.movies.get(movie) + "-->");
-            });
+        System.out.println(start);
+        for (int i = 0; i < path.size(); i++) {
+            Actor node1 = path.get(i);
+            if (i + 1 >= path.size()) break;
+            Actor node2 = path.get(i + 1);
+            String edge = "";
+            for (Map<Actor, String> e : this.graph.get(node1)) {
+                for (Actor a : e.keySet()) {
+                    if (a.equals(node2)) {
+                        edge = e.get(a);
+                    }
+                }
+            }
+            System.out.println(" ===[ " + this.movies.get(edge) + " ] ===> " + node2);
         }
     }
 
-    private List<Map<Actor, String>> BFSvisit(Actor start, Actor finish, List<Actor> visited) {
+    private List<Actor> BFSvisit(Actor start, Actor finish, Set<Actor> visited) {
         visited.add(start);
         Queue<Actor> queue = new LinkedList<>();
         queue.add(start);
         Map<Actor, Actor> parents = new HashMap<>();
-        Map<Actor, String> edges = new HashMap<>();
 
         while (!queue.isEmpty()) {
             Actor u = queue.poll();
+            //gå gjennom kanter
             for (Map<Actor, String> m : this.graph.get(u)) {
                 for (Actor v : m.keySet()) {
                     if (v.equals(finish)) {
-                        Map<Actor, String> map = new HashMap<>();
-                        map.put(u, m.get(v));
                         parents.put(v, u);
-                        List<Actor> result1 = new ArrayList<>();
-                        List<String> result2 = new ArrayList<>();
+                        List<Actor> path = new ArrayList<>();
+
                         Actor pointer = v;
                         while (pointer != null) {
-                            result1.add(pointer);
-                            result2.add(edges.get(pointer));
+                            path.add(pointer);
                             pointer = parents.get(pointer);
                         }
-                        System.out.println(result1);
-                        System.out.println(result2);
-                        List<Map<Actor, String>> result = new ArrayList<>();
-                        for (int i = 0; i < Math.max(result1.size(), result2.size()); i++) {
-                            Map<Actor, String> moradi = new HashMap<>();
-                            String mv;
-                            try {
-                                mv = result2.get(i);
-                            } catch (IndexOutOfBoundsException e) {
-                                mv = null;
-                            }
-                            moradi.put(result1.get(i), result2.get(i));
-                            result.add(moradi);
-                        }
-                        return result.reversed();
+                        return path.reversed();
                     }
 
                     if (!visited.contains(v)) {
                         visited.add(v);
-                        edges.put(v, m.get(v));
                         parents.put(v, u);
                         queue.offer(v);
                     }
@@ -195,4 +206,62 @@ public class Graph {
         }
         return null;
     }
+
+    public void chillesteVei(String id1, String id2) {
+        Actor start = this.actors.get(id1);
+        Actor goal = this.actors.get(id2);
+
+        System.out.println("\nMost enjoyable from " + start + " to " + goal);
+        List<WeightedNode> weights = this.dijkstras(start, goal);
+        System.out.println(start);
+        for (int i = 1; i < weights.size(); i++) {
+            WeightedNode node = weights.get(i);
+            String edge = node.movie;
+            System.out.println(" ===[ " + this.movies.get(edge) + " ] ===> " + node.actor);
+        }
+        System.out.println(weights.getLast());
+    }
+
+    private List<WeightedNode> dijkstras(Actor start, Actor finish) {
+        Map<WeightedNode, WeightedNode> parents = new HashMap<>();
+        Map<Actor, WeightedNode> dist = new HashMap<>();
+        Queue<WeightedNode> queue = new PriorityQueue<>();
+        WeightedNode s = new WeightedNode(start, 0, null);
+        WeightedNode goal = new WeightedNode(finish, Double.MAX_VALUE, null);
+        queue.add(s);
+        dist.put(start, s);
+
+        while (!queue.isEmpty()) {
+            WeightedNode u = queue.poll();
+
+            for (Map<Actor, String> m : this.graph.get(u.actor)) {
+                for (Actor a : m.keySet()) {
+                    double c = dist.get(u.actor).weight + (10 - movies.get(m.get(a)).rating);
+                    WeightedNode v = new WeightedNode(a, c, m.get(a));
+
+                    if (dist.get(a) == null || c < dist.get(a).weight) {
+                        dist.put(a, v);
+                        queue.offer(v);
+                        parents.put(v, u);
+
+                    }
+                    if (a.equals(finish) && v.weight < goal.weight) {
+                        goal.weight = v.weight;
+                        goal.movie = v.movie;
+                        parents.put(goal, u);
+                    }
+                }
+            }
+        }
+        List<WeightedNode> path = new ArrayList<>();
+
+        WeightedNode pointer = goal;
+        while (pointer != null) {
+            path.add(pointer);
+            pointer = parents.get(pointer);
+        }
+        return path.reversed();
+    }
+
+
 }
