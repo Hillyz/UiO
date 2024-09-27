@@ -6,14 +6,28 @@ public class Graph {
 
     public static void main(String[] args) throws Exception {
         Graph gb = new Graph();
+        Map<String, String> vei = new LinkedHashMap<>();
+        vei.put("nm2255973", "nm0000460");
+        vei.put("nm0424060", "nm8076281");
+        vei.put("nm4689420", "nm0000365");
+        vei.put("nm0000288", "nm2143282");
+        vei.put("nm0637259", "nm0931324");
+        long starttime = System.currentTimeMillis();
         gb.buildGraph();
-        gb.sixDeegreesIMDB("nm0424060", "nm8076281");
-        gb.chillesteVei("nm0424060", "nm8076281");
+        vei.forEach((a1, a2) -> {
+            gb.sixDeegreesIMDB(a1, a2);
+        });
+        vei.forEach((a1, a2) -> {
+            gb.chillesteVei(a1, a2);
+        });
+        gb.countComponents();
+        System.out.println("\n" + (System.currentTimeMillis() - starttime) + " ms");
     }
 
     private final Map<Actor, List<Map<Actor, String>>> graph = new HashMap<>();
     private final Map<String, Movie> movies = new HashMap<>();
     private final Map<String, Actor> actors = new HashMap<>();
+    private final Map<Integer, Integer> components = new HashMap<>();
 
     public static class Actor {
         public final String id;
@@ -63,7 +77,7 @@ public class Graph {
 
         @Override
         public String toString() {
-            return "Total weight: " + this.weight;
+            return String.format("Total weight: %.1f", this.weight);
         }
 
         @Override
@@ -153,7 +167,7 @@ public class Graph {
         Actor start = this.actors.get(id1);
         Actor goal = this.actors.get(id2);
 
-        List<Actor> path = BFSvisit(start, goal, new HashSet<>());
+        List<Actor> path = findShortestPath(start, goal, new HashSet<>());
         System.out.println("\n Fastest from " + start + " to " + goal);
 
         System.out.println(start);
@@ -173,7 +187,7 @@ public class Graph {
         }
     }
 
-    private List<Actor> BFSvisit(Actor start, Actor finish, Set<Actor> visited) {
+    private List<Actor> findShortestPath(Actor start, Actor finish, Set<Actor> visited) {
         visited.add(start);
         Queue<Actor> queue = new LinkedList<>();
         queue.add(start);
@@ -263,5 +277,46 @@ public class Graph {
         return path.reversed();
     }
 
+    private void BFSfull() {
+        Set<Actor> visited = new HashSet<>();
+        for (Actor node : this.graph.keySet()) {
+            int size = 0;
+            if (!visited.contains(node)) {
+                size = BFSvisit(node, visited);
+            }
+            if (this.components.containsKey(size)) {
+                this.components.put(size, this.components.get(size) + 1);
+            } else if (size != 0) {
+                this.components.put(size, 1);
+            }
+        }
+    }
+
+    private int BFSvisit(Actor startNode, Set<Actor> visited) {
+        visited.add(startNode);
+        Queue<Actor> queue = new LinkedList<>();
+        queue.offer(startNode);
+        int i = 1;
+        while (!queue.isEmpty()) {
+            Actor u = queue.poll();
+            for (Map<Actor, String> m : this.graph.get(u)) {
+                for (Actor v : m.keySet()) {
+                    if (!visited.contains(v)) {
+                        visited.add(v);
+                        i++;
+                        queue.offer(v);
+                    }
+                }
+            }
+        }
+        return i;
+    }
+
+    public void countComponents() {
+        this.BFSfull();
+        this.components.forEach((size, comps) -> {
+            System.out.println("There are " + comps + " components of size " + size);
+        });
+    }
 
 }
