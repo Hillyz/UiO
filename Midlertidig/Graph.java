@@ -171,10 +171,10 @@ public class Graph {
         System.out.println("\n Fastest from " + start + " to " + goal);
 
         System.out.println(start);
-        for (int i = 0; i < path.size(); i++) {
+        for (int i = path.size()-1; i >= 0; i--) {
             Actor node1 = path.get(i);
-            if (i + 1 >= path.size()) break;
-            Actor node2 = path.get(i + 1);
+            if (i - 1 < 0) break;
+            Actor node2 = path.get(i - 1);
             String edge = "";
             for (Map<Actor, String> e : this.graph.get(node1)) {
                 for (Actor a : e.keySet()) {
@@ -207,7 +207,7 @@ public class Graph {
                             path.add(pointer);
                             pointer = parents.get(pointer);
                         }
-                        return path.reversed();
+                        return path;
                     }
 
                     if (!visited.contains(v)) {
@@ -228,12 +228,12 @@ public class Graph {
         System.out.println("\nMost enjoyable from " + start + " to " + goal);
         List<WeightedNode> weights = this.dijkstras(start, goal);
         System.out.println(start);
-        for (int i = 1; i < weights.size(); i++) {
-            WeightedNode node = weights.get(i);
+        for (int i = weights.size()-1; i >= 1; i--) {
+            WeightedNode node = weights.get(i-1);
             String edge = node.movie;
             System.out.println(" ===[ " + this.movies.get(edge) + " ] ===> " + node.actor);
         }
-        System.out.println(weights.getLast());
+        System.out.println(weights.get(0));
     }
 
     private List<WeightedNode> dijkstras(Actor start, Actor finish) {
@@ -274,7 +274,7 @@ public class Graph {
             path.add(pointer);
             pointer = parents.get(pointer);
         }
-        return path.reversed();
+        return path;
     }
 
     private void BFSfull() {
