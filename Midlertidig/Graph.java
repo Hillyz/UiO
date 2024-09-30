@@ -33,7 +33,7 @@ public class Graph {
         System.out.println("\n" + (System.currentTimeMillis() - starttime) + " ms");
     }
 
-    private final Map<Actor, Set<Edge>> graph = new HashMap<>();
+    private final Map<Actor, List<Edge>> graph = new HashMap<>();
     private final Map<String, Movie> movies = new HashMap<>();
     private final Map<String, Actor> actors = new HashMap<>();
     private final Map<Integer, Integer> components = new HashMap<>();
@@ -73,8 +73,9 @@ public class Graph {
     }
 
     public static class Edge {
-        private final Actor actor;
-        private final Movie movie;
+        public final Actor actor;
+        public Movie movie;
+
 
         public Edge(Actor actor, Movie movie) {
             this.actor = actor;
@@ -131,11 +132,11 @@ public class Graph {
     public void buildGraph() throws IOException {
         this.readFile("movies.tsv");
         this.readFile("actors.tsv");
-        HashMap<String, ArrayList<Actor>> hm = new HashMap<>(); //alle filmer med alle skuespillerne i filmen
+        HashMap<String, List<Actor>> hm = new HashMap<>(); //alle filmer med alle skuespillerne i filmen
         for (Actor a : actors.values()) {
             for (String m : a.movies) {
                 if (!hm.containsKey(m)) {
-                    ArrayList<Actor> aList = new ArrayList<>();
+                    List<Actor> aList = new ArrayList<>();
                     aList.add(a);
                     hm.put(m, aList);
                 } else {
@@ -146,7 +147,7 @@ public class Graph {
 
         for (String movie : hm.keySet()) {
             for (Actor node : hm.get(movie)) {
-                Set<Edge> edges = new HashSet<>();
+                List<Edge> edges = new ArrayList<>();
                 // sjekk om film er relevant
                 if (!movies.containsKey(movie)) {
                     if (!this.graph.containsKey(node)) {
@@ -154,7 +155,7 @@ public class Graph {
                     }
                     continue;
                 }
-                Set<Actor> copy = new HashSet<>(hm.get(movie)); // alle actors fra filmen i en liste
+                List<Actor> copy = new ArrayList<>(hm.get(movie)); // alle actors fra filmen i en liste
                 copy.remove(node); // fjern seg selv for å unngå self loops
 
                 for (Actor ax : copy) {
@@ -176,7 +177,7 @@ public class Graph {
 
     public void printEdges() {
         int degrees = 0;
-        for (Set<Edge> edges : this.graph.values()) {
+        for (List<Edge> edges : this.graph.values()) {
             degrees += edges.size();
         }
         System.out.println("Edges: " + degrees / 2);
